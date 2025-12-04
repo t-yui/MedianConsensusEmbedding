@@ -44,7 +44,7 @@ Random state of MDS initialization (default: $1$)
 **Value**
 
 `y`
-The consensus embedding ($n \times p$ matrices)
+The consensus embedding ($n \times p$ matrix)
 
 `x`
 The pairwise distance matrix of consensus embedding ($n \times n$)
