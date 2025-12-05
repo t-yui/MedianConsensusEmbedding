@@ -49,7 +49,7 @@ The consensus embedding ($n \times p$ matrix)
 `x`
 The pairwise distance matrix of consensus embedding ($n \times n$)
 
-### Perform evaluation experiments
+### Perform evaluation experiments (Coming soon)
 
 Set the configures of each script, and execute the following commands in your shell environment.
 
