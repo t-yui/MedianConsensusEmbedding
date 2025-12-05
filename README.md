@@ -32,7 +32,7 @@ y, x = MCE(
 
 **Arguments**
 
-`base_embeddings` (list): List of base embeddings (numpy array, shape = ($n_{\mathrm{samples}}$, $n_{\mathrm{features}}$) with typically $n_{\mathrm{features}}$=2$) to be integrated
+`base_embeddings` (list): List of base embeddings (numpy array, shape = ($n_{\mathrm{samples}}$, $n_{\mathrm{features}}$) with typically $n_{\mathrm{features}}=2$) to be integrated
 
 `n_components` (int, default $=2$): The dimension of projected eucledian space
 
