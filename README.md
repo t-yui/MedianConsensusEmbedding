@@ -12,7 +12,7 @@ MCE can be used to (i) obtain stable visualization from multi-run with random in
 
 - Python ≥ 3.9.0
 - Required libraries for MCE implementation: `scikit-lean`
-- Required libraries for simulation experiments: `scikit-lean`, `umap-learn`, `tqdm`
+- Required libraries for evaluation experiments: `scikit-lean`, `umap-learn`, `tqdm`
 
 ## License
 
@@ -49,7 +49,7 @@ The consensus embedding ($n \times p$ matrix)
 `x`
 The pairwise distance matrix of consensus embedding ($n \times n$)
 
-### Perform simulation experiments
+### Perform evaluation experiments
 
 Set the configures of each script, and execute the following commands in your shell environment.
 
