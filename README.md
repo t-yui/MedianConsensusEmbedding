@@ -32,22 +32,17 @@ y, x = MCE(
 
 **Arguments**
 
-`base_embeddings`
-List of base embeddings ($n \times p$ matrices with typically $p=2$) to be integrated
+`base_embeddings` (list): List of base embeddings (numpy array, shape = ($n_{\mathrm{samples}}$, $n_{\mathrm{features}}$) with typically $n_{\mathrm{features}}$=2$) to be integrated
 
-`n_components`
-The dimension of projected eucledian space (default: $2$)
+`n_components` (int, default $=2$): The dimension of projected eucledian space
 
-`rs_mds`
-Random state of MDS initialization (default: $1$)
+`rs_mds` (int, default $=1$): Random state of MDS initialization
 
 **Value**
 
-`y`
-The consensus embedding ($n \times p$ matrix)
+`y` (numpy array, shape = ($n_{\mathrm{samples}}$, $n_{\mathrm{features}}$)): The consensus embedding
 
-`x`
-The pairwise distance matrix of consensus embedding ($n \times n$)
+`x` (numpy array, shape = ($n_{\mathrm{samples}}$, $n_{\mathrm{samples}}$)): The pairwise distance matrix of consensus embedding
 
 ### Perform evaluation experiments (Coming soon)
 
