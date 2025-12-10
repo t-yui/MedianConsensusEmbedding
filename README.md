@@ -1,7 +1,7 @@
 # MedianConsensusEmbedding
 
 This repository is dedicated to the code availability for the paper: [**Median Consensus Embedding for Dimensionality Reduction**](
-https://doi.org/10.48550/arXiv.2503.08103).
+https://doi.org/10.48550/arXiv.2503.08103v2).
 
 ## Description
 
@@ -23,6 +23,8 @@ This repository is licensed under the [MIT License](LICENSE).
 ### Perform MCE
 
 ```python
+from median_consensus_embedding import MCE
+
 y, x = MCE(
     base_embeddings,
     n_components=2,
@@ -44,10 +46,10 @@ y, x = MCE(
 
 `x` (numpy array, shape = ($n_{\mathrm{samples}}$, $n_{\mathrm{samples}}$)): The pairwise distance matrix of consensus embedding
 
-### Perform evaluation experiments (Coming soon)
+### Perform evaluation experiments
 
-Set the configures of each script, and execute the following commands in your shell environment.
-
+Set the configures of each script and datasets.
+Then, execute the following commands in your shell environment.
 
 1. Evaluation of stability of MCE
 
