@@ -1,7 +1,7 @@
 # MedianConsensusEmbedding
 
 This repository is dedicated to the code availability for the paper: [**Median Consensus Embedding for Dimensionality Reduction**](
-https://doi.org/10.48550/arXiv.2503.08103v2).
+https://doi.org/10.48550/arXiv.2503.08103).
 
 ## Description
 
