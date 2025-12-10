@@ -1,6 +1,5 @@
 import numpy as np
 from sklearn.manifold import MDS
-from sklearn.datasets import load_digits
 from sklearn.metrics import pairwise_distances
 
 
@@ -47,6 +46,7 @@ def MCE(base_embeddings, n_components=2, rs_mds=1):
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
     from sklearn.manifold import TSNE
+    from sklearn.datasets import load_digits
 
     np.random.seed(100)
     m = 10
