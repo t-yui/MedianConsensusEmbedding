@@ -4,13 +4,16 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.manifold import TSNE, MDS
+import itertools
+from sklearn.cluster import KMeans
+from sklearn.manifold import TSNE, MDS, LocallyLinearEmbedding
 from sklearn.metrics import pairwise_distances
 from sklearn.preprocessing import StandardScaler
 import scipy
 from scipy.spatial import procrustes
+from scipy.spatial.distance import squareform
 import umap
-from median_consensus_embedding import geometric_median_matrices
+from median_consensus_embedding import geometric_median_matrices, normalize_embedding
 
 
 # utils for pre-processing data
@@ -123,9 +126,103 @@ def run_dr_method(X, method="tsne", random_state=None):
     return normalize_embedding(emb)
 
 
+def run_lle(X, n_neighbors, random_state=None):
+    model = LocallyLinearEmbedding(
+        n_components=2,
+        n_neighbors=n_neighbors,
+        method="standard",
+        eigen_solver="arpack",
+        random_state=random_state,
+    )
+    emb = model.fit_transform(X)
+    return normalize_embedding(emb)
+
+
 def build_consensus_distance(embeddings_list):
     dist_mats = [compute_distance_matrix_embedding(e) for e in embeddings_list]
     return geometric_median_matrices(dist_mats)
+
+
+def element_wise_mode(dist_mats, n_grid=128):
+    """
+    mode of the Gaussian KDE for each pairwise distance (C-LLE type)
+    """
+    V = np.array([squareform(D, checks=False) for D in dist_mats])
+    m = V.shape[0]
+    lower = V.min(axis=0)
+    upper = V.max(axis=0)
+    bandwidth = np.maximum(V.std(axis=0, ddof=1) * m ** (-0.2), np.finfo(float).eps)
+
+    best_density = np.full(V.shape[1], -np.inf)
+    mode = lower.copy()
+    for t in np.linspace(0, 1, n_grid):
+        grid = lower + t * (upper - lower)
+        density = np.exp(-0.5 * ((grid - V) / bandwidth) ** 2).sum(axis=0)
+        update = density > best_density
+        best_density[update] = density[update]
+        mode[update] = grid[update]
+    return squareform(mode)
+
+
+def r_squared_index(Y, n_clusters, random_state=0):
+    km = KMeans(n_clusters=n_clusters, n_init=20, random_state=random_state).fit(Y)
+    total = np.sum((Y - Y.mean(axis=0)) ** 2)
+    return 1 - km.inertia_ / total
+
+
+def select_embeddings_vm2012(embeddings_list, n_clusters, threshold=0.15, random_state=0):
+    rsi = np.array(
+        [r_squared_index(e, n_clusters, random_state) for e in embeddings_list]
+    )
+    return rsi > threshold * rsi.max()
+
+
+def consensus_distance(embeddings_list, method="mce", n_clusters=None):
+    """
+    method: "mce", "vm2012", or "mode" (C-LLE type)
+    """
+    if method == "mce":
+        return build_consensus_distance(embeddings_list)
+    elif method == "vm2012":
+        selected = select_embeddings_vm2012(embeddings_list, n_clusters)
+        dist_mats = [
+            compute_distance_matrix_embedding(e)
+            for e, keep in zip(embeddings_list, selected)
+            if keep
+        ]
+        return np.median(dist_mats, axis=0)
+    elif method == "mode":
+        dist_mats = [compute_distance_matrix_embedding(e) for e in embeddings_list]
+        return element_wise_mode(dist_mats)
+
+
+def consensus_embedding(
+    X,
+    method="mce",
+    base="tsne",
+    n_runs=10,
+    n_clusters=None,
+    lle_neighbors=range(5, 31),
+    random_state=None,
+    mds_random_state=0,
+):
+    """
+    method: "mce", "vm2012", "mode", or "clle" (original C-LLE; base is ignored)
+    base: "tsne" or "umap"
+    """
+    if method == "clle":
+        embeddings_list = [
+            run_lle(X, k, random_state=random_state) for k in lle_neighbors
+        ]
+        D = consensus_distance(embeddings_list, method="mode")
+    else:
+        seeds = np.random.default_rng(random_state).integers(0, 2**31 - 1, n_runs)
+        embeddings_list = [
+            run_dr_method(X, method=base, random_state=int(s)) for s in seeds
+        ]
+        D = consensus_distance(embeddings_list, method=method, n_clusters=n_clusters)
+    Y = mds_from_distance(D, random_state=mds_random_state)
+    return Y, D
 
 
 def mds_from_distance(D, random_state=0):
@@ -170,3 +267,51 @@ def plot_scatter_with_legend(Y, labels, filename=None, save_fig=False, ref_Y=Non
         print(f"Saved: {filename}")
     else:
         plt.show()
+
+
+# utils for evaluation
+ 
+def mean_pairwise_distance(dist_mats):
+    return np.mean(
+        [np.linalg.norm(a - b, "fro") for a, b in itertools.combinations(dist_mats, 2)]
+    )
+ 
+ 
+def mean_distance_to_target(dist_mats, target):
+    return np.mean([np.linalg.norm(D - target, "fro") for D in dist_mats])
+ 
+ 
+def rank_matrix(D):
+    D = D.copy()
+    np.fill_diagonal(D, -np.inf)
+    n = D.shape[0]
+    order = np.argsort(D, axis=1, kind="stable")
+    ranks = np.empty((n, n), dtype=int)
+    ranks[np.arange(n)[:, None], order] = np.arange(n)
+    return ranks
+ 
+ 
+def structure_recovery(Z, Y):
+    """
+    Q_local, Q_global, and AUC of R_NX of the embedding Y against the truth Z
+    """
+    n = Z.shape[0]
+    high = rank_matrix(compute_distance_matrix_embedding(Z))
+    low = rank_matrix(compute_distance_matrix_embedding(Y))
+ 
+    max_rank = np.maximum(high, low)
+    np.fill_diagonal(max_rank, n)
+    counts = np.bincount(max_rank.ravel(), minlength=n + 1)
+ 
+    K = np.arange(1, n)
+    qnx = np.cumsum(counts)[1:n] / (n * K)
+    lcmc = qnx - K / (n - 1)
+    k_max = np.argmax(lcmc) + 1
+    q_local = np.mean(qnx[:k_max])
+    q_global = np.mean(qnx[k_max - 1 :])
+ 
+    K = np.arange(1, n - 1)
+    rnx = ((n - 1) * qnx[:-1] - K) / (n - 1 - K)
+    auc_rnx = np.sum(rnx / K) / np.sum(1 / K)
+ 
+    return {"q_local": q_local, "q_global": q_global, "auc_rnx": auc_rnx}
