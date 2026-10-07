@@ -22,6 +22,8 @@ CONFIG = {
     "DATA_SOURCE": "toxo",  # 'toxo' or 'eb'
     "METHOD": "tsne",  # 'tsne' or 'umap',
     "CONSENSUS_METHODS": ["vm2012", "mce"],
+    "SUPPLEMENTARY_METHODS": ["vm2012_full"],
+    "SUBSET_FRACTION": 0.5,
     "LLE_NEIGHBORS": range(5, 31),
     "N_RUNS_BASE": 1000,
     "N_EVAL": 10,
@@ -36,6 +38,22 @@ CONFIG = {
 }
 
 METHOD_LABELS = {"single": "Single run", "vm2012": "VM2012", "mce": "MCE", "clle": "C-LLE"}
+POOLS = {"single": "full", "mce": "full", "vm2012": "subset", "vm2012_full": "full"}
+AGGREGATORS = {"mce": "mce", "vm2012": "vm2012", "vm2012_full": "vm2012"}
+
+
+def run_pool(X, pool, seeds, rng):
+    if pool == "subset":
+        size = int(X.shape[1] * CONFIG["SUBSET_FRACTION"])
+        return [
+            run_dr_method(
+                X[:, rng.choice(X.shape[1], size, replace=False)],
+                method=CONFIG["METHOD"],
+                random_state=int(s),
+            )
+            for s in seeds
+        ]
+    return [run_dr_method(X, method=CONFIG["METHOD"], random_state=int(s)) for s in seeds]
 
 
 def summarize(m, method, dists, recoveries, target=None):
@@ -68,22 +86,29 @@ def evaluate_consensus(X, targets, n_clusters):
 
     for m in [1] + CONFIG["RUNS_LIST"]:
         print(f"\n--- Evaluating for m={m} ({CONFIG['METHOD']}) ---")
-        methods = ["single"] if m == 1 else CONFIG["CONSENSUS_METHODS"]
+        methods = (
+            ["single"]
+            if m == 1
+            else CONFIG["CONSENSUS_METHODS"] + CONFIG["SUPPLEMENTARY_METHODS"]
+        )
         dists = {method: [] for method in methods}
         recoveries = {method: [] for method in methods}
 
         for e in tqdm(range(CONFIG["N_EVAL"])):
             seeds = rng.integers(0, 2**31 - 1, m)
-            embs = [
-                run_dr_method(X, method=CONFIG["METHOD"], random_state=int(s))
-                for s in seeds
-            ]
+            pools = {
+                pool: run_pool(X, pool, seeds, rng)
+                for pool in sorted(set(POOLS[method] for method in methods))
+            }
             for method in methods:
+                embs = pools[POOLS[method]]
                 if method == "single":
                     D = compute_distance_matrix_embedding(embs[0])
                     Y = embs[0]
                 else:
-                    D = consensus_distance(embs, method=method, n_clusters=n_clusters)
+                    D = consensus_distance(
+                        embs, method=AGGREGATORS[method], n_clusters=n_clusters
+                    )
                     Y = mds_from_distance(D, random_state=e)
                 dists[method].append(D)
                 recoveries[method].append(structure_recovery(X, Y))
@@ -145,6 +170,9 @@ def plot_stability(summary):
         plt.xlabel(r"Number of embeddings ($m$)", fontsize=24)
         plt.ylabel(ylabel, fontsize=24)
         plt.xticks(x_vals, fontsize=20)
+        tick_labels = plt.gca().get_xticklabels()
+        tick_labels[0].set_horizontalalignment("right")
+        tick_labels[1].set_horizontalalignment("left")
         plt.yticks(fontsize=20)
         plt.legend(fontsize=18)
 
@@ -162,14 +190,17 @@ if __name__ == "__main__":
     X_data, labels = get_dataset(CONFIG)
     n_clusters = len(np.unique(labels))
 
-    base_embeddings = []
-    for seed in tqdm(range(CONFIG["N_RUNS_BASE"])):
-        emb = run_dr_method(X_data, method=CONFIG["METHOD"], random_state=seed)
-        base_embeddings.append(emb)
+    base_rng = np.random.default_rng(CONFIG["RANDOM_STATE"] + 1)
+    base_pools = {
+        pool: run_pool(X_data, pool, tqdm(range(CONFIG["N_RUNS_BASE"])), base_rng)
+        for pool in ["full", "subset"]
+    }
 
     targets = {
-        method: consensus_distance(base_embeddings, method=method, n_clusters=n_clusters)
-        for method in CONFIG["CONSENSUS_METHODS"]
+        method: consensus_distance(
+            base_pools[POOLS[method]], method=AGGREGATORS[method], n_clusters=n_clusters
+        )
+        for method in CONFIG["CONSENSUS_METHODS"] + CONFIG["SUPPLEMENTARY_METHODS"]
     }
 
     y_mce_base = mds_from_distance(targets["mce"], random_state=0)
