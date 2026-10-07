@@ -111,7 +111,13 @@ def run_repeat(truth, scenario, params, targets, repeat):
 
     rows = []
     for m, method in keys:
-        target = targets["mce"] if method == "single" else targets[method]
+        if method == "single":
+            s_true = np.nan
+        else:
+            s_true = mean_distance_to_target(
+                dists[(m, method)], targets[method]
+            )
+
         rec = pd.DataFrame(recoveries[(m, method)]).mean()
         rows.append(
             {
@@ -120,7 +126,7 @@ def run_repeat(truth, scenario, params, targets, repeat):
                 "m": m,
                 "method": method,
                 "s_pair": mean_pairwise_distance(dists[(m, method)]),
-                "s_true": mean_distance_to_target(dists[(m, method)], target),
+                "s_true": s_true,
                 "q_local": rec["q_local"],
                 "q_global": rec["q_global"],
                 "auc_rnx": rec["auc_rnx"],
