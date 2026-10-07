@@ -3,15 +3,17 @@
 
 import itertools
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-from median_consensus_embedding import geometric_median_matrices
 from utils_illustration import (
     get_dataset,
     run_dr_method,
-    build_consensus_distance,
-    mds_from_distance,
+    run_lle,
     compute_distance_matrix_embedding,
+    consensus_distance,
+    mds_from_distance,
+    structure_recovery,
     plot_scatter_with_legend,
 )
 
@@ -19,9 +21,12 @@ from utils_illustration import (
 CONFIG = {
     "DATA_SOURCE": "toxo",  # 'toxo' or 'eb'
     "METHOD": "tsne",  # 'tsne' or 'umap',
+    "CONSENSUS_METHODS": ["vm2012", "mce"],
+    "LLE_NEIGHBORS": range(5, 31),
     "N_RUNS_BASE": 1000,
     "N_EVAL": 10,
     "RUNS_LIST": [2, 10, 20, 50, 100],
+    "RANDOM_STATE": 0,
     "SAVE_PDF": True,
     "TOXO_FILES": {
         "data": "./data_Barylyuk2020ToxoLopit.csv",
@@ -30,129 +35,144 @@ CONFIG = {
     "EB_FILES": {"path": "./EBdata.mat", "sample_ratio": 0.1},
 }
 
+METHOD_LABELS = {"single": "Single run", "vm2012": "VM2012", "mce": "MCE", "clle": "C-LLE"}
 
-def evaluate_instability(X, labels, y_base_mds, consensus_D_base, run_counts):
-    results = {}
 
-    for n_runs in run_counts:
-        print(f"\n--- Evaluating for N={n_runs} ({CONFIG['METHOD']}) ---")
-        instabilities = []
-        pairwise_diffs = []
+def summarize(m, method, dists, recoveries, target=None):
+    pairwise = [
+        np.linalg.norm(a - b, ord="fro") for a, b in itertools.combinations(dists, 2)
+    ]
+    to_target = (
+        [np.linalg.norm(D - target, ord="fro") for D in dists]
+        if target is not None
+        else [np.nan]
+    )
+    rec = pd.DataFrame(recoveries)
+    row = {
+        "m": m,
+        "method": method,
+        "s_true_mean": np.mean(to_target),
+        "s_true_sd": np.std(to_target),
+        "s_pair_mean": np.mean(pairwise) if pairwise else np.nan,
+        "s_pair_sd": np.std(pairwise) if pairwise else np.nan,
+    }
+    for col in ["q_local", "q_global", "auc_rnx"]:
+        row[f"{col}_mean"] = rec[col].mean()
+        row[f"{col}_sd"] = rec[col].std(ddof=0)
+    return row
 
-        temp_dist_matrices = []
 
-        for _ in tqdm(range(CONFIG["N_EVAL"])):
-            current_embs = []
-            _n = 0
-            while _n < n_runs:
-                try:
-                    seed = np.random.randint(0, 2 ** 32 - 1)
-                    emb = run_dr_method(X, method=CONFIG["METHOD"], random_state=seed)
-                except Exception as e:
-                    continue
-                current_embs.append(emb)
-                _n += 1
+def evaluate_consensus(X, targets, n_clusters):
+    rng = np.random.default_rng(CONFIG["RANDOM_STATE"])
+    rows = []
 
-            if n_runs == 1:
-                D_current = compute_distance_matrix_embedding(current_embs[0])
-            else:
-                D_current = build_consensus_distance(current_embs)
+    for m in [1] + CONFIG["RUNS_LIST"]:
+        print(f"\n--- Evaluating for m={m} ({CONFIG['METHOD']}) ---")
+        methods = ["single"] if m == 1 else CONFIG["CONSENSUS_METHODS"]
+        dists = {method: [] for method in methods}
+        recoveries = {method: [] for method in methods}
 
-            temp_dist_matrices.append(D_current)
-
-            instability = np.linalg.norm(consensus_D_base - D_current, ord="fro")
-            instabilities.append(instability)
-
-        if len(temp_dist_matrices) > 1:
-            diffs = [
-                np.linalg.norm(m1 - m2, ord="fro")
-                for m1, m2 in itertools.combinations(temp_dist_matrices, 2)
+        for e in tqdm(range(CONFIG["N_EVAL"])):
+            seeds = rng.integers(0, 2**31 - 1, m)
+            embs = [
+                run_dr_method(X, method=CONFIG["METHOD"], random_state=int(s))
+                for s in seeds
             ]
-            pairwise_diffs = diffs
-        else:
-            pairwise_diffs = [0.0]
+            for method in methods:
+                if method == "single":
+                    D = compute_distance_matrix_embedding(embs[0])
+                    Y = embs[0]
+                else:
+                    D = consensus_distance(embs, method=method, n_clusters=n_clusters)
+                    Y = mds_from_distance(D, random_state=e)
+                dists[method].append(D)
+                recoveries[method].append(structure_recovery(X, Y))
 
-        results[n_runs] = {
-            "instabilities": instabilities,
-            "pairwise_diffs": pairwise_diffs,
-        }
-
-        print(f"  Mean: Dist to Base: {np.mean(instabilities):.5f}")
-        print(f"  SD: Dist to Base: {np.std(instabilities):.5f}")
-        print(f"  Mean Pairwise Dist: {np.mean(pairwise_diffs):.5f}")
-        print(f"  SD: Pairwise Dist: {np.std(pairwise_diffs):.5f}")
-
-    return results
+        for method in methods:
+            target = targets["mce"] if method == "single" else targets[method]
+            rows.append(summarize(m, method, dists[method], recoveries[method], target))
+    return rows
 
 
-def plot_instability_results(results_single, results_multi):
-    runs_list = sorted(list(results_multi.keys()))
-    x_vals = [1] + runs_list
+def evaluate_clle(X):
+    print("\n--- Evaluating C-LLE ---")
+    embs = [
+        run_lle(X, k, random_state=CONFIG["RANDOM_STATE"])
+        for k in tqdm(CONFIG["LLE_NEIGHBORS"])
+    ]
+    D = consensus_distance(embs, method="mode")
+    recoveries = [
+        structure_recovery(X, mds_from_distance(D, random_state=e))
+        for e in range(CONFIG["N_EVAL"])
+    ]
+    return summarize(len(CONFIG["LLE_NEIGHBORS"]), "clle", [], recoveries)
 
-    means_cons = [np.mean(results_single[1]["instabilities"])]
-    stds_cons = [np.std(results_single[1]["instabilities"])]
 
-    means_pair = [np.mean(results_single[1]["pairwise_diffs"])]
-    stds_pair = [np.std(results_single[1]["pairwise_diffs"])]
+def plot_stability(summary):
+    x_vals = [1] + CONFIG["RUNS_LIST"]
+    panels = [
+        ("s_true", r"Distance to $\hat{y}_{1000}$", "instability_plot_1_distance_to_base"),
+        ("s_pair", "Distance to each other", "instability_plot_2_pairwise"),
+    ]
 
-    for n in runs_list:
-        means_cons.append(np.mean(results_multi[n]["instabilities"]))
-        stds_cons.append(np.std(results_multi[n]["instabilities"]))
-
-        means_pair.append(np.mean(results_multi[n]["pairwise_diffs"]))
-        stds_pair.append(np.std(results_multi[n]["pairwise_diffs"]))
-
-    def _plot_errorbar(y_means, y_stds, ylabel, filename):
+    for col, ylabel, name in panels:
         plt.figure(figsize=(12, 6))
-        plt.errorbar(
-            x_vals,
-            y_means,
-            yerr=y_stds,
-            fmt="-o",
-            capsize=5,
-            ecolor="black",
-            markersize=10,
-            linewidth=2,
-        )
+        colors = {}
+        for method in ["single"] + CONFIG["CONSENSUS_METHODS"]:
+            part = summary[summary["method"] == method]
+            container = plt.errorbar(
+                part["m"],
+                part[f"{col}_mean"],
+                yerr=part[f"{col}_sd"],
+                fmt="-o",
+                capsize=5,
+                markersize=10,
+                linewidth=2,
+                label=METHOD_LABELS[method],
+            )
+            colors[method] = container[0].get_color()
+
+        single = summary[summary["method"] == "single"]
+        for method in CONFIG["CONSENSUS_METHODS"]:
+            first = summary[summary["method"] == method].sort_values("m")
+            plt.plot(
+                [single["m"].iloc[0], first["m"].iloc[0]],
+                [single[f"{col}_mean"].iloc[0], first[f"{col}_mean"].iloc[0]],
+                linestyle=":",
+                linewidth=2,
+                color=colors["single"],
+            )
         plt.xlabel(r"Number of embeddings ($m$)", fontsize=24)
         plt.ylabel(ylabel, fontsize=24)
         plt.xticks(x_vals, fontsize=20)
         plt.yticks(fontsize=20)
+        plt.legend(fontsize=18)
 
-        if filename and CONFIG["SAVE_PDF"]:
+        filename = f"{name}_{CONFIG['DATA_SOURCE']}_{CONFIG['METHOD']}.pdf"
+        if CONFIG["SAVE_PDF"]:
             plt.savefig(filename, format="pdf", bbox_inches="tight")
             print(f"Saved: {filename}")
         else:
             plt.show()
-
-    _plot_errorbar(
-        means_cons,
-        stds_cons,
-        r"Distance to $\hat{y}_{1000}$",
-        f"instability_plot_1_distance_to_base_{CONFIG['DATA_SOURCE']}_{CONFIG['METHOD']}.pdf",
-    )
-
-    _plot_errorbar(
-        means_pair,
-        stds_pair,
-        "Distance to each other",
-        f"instability_plot_2_pairwise_{CONFIG['DATA_SOURCE']}_{CONFIG['METHOD']}.pdf",
-    )
 
 
 if __name__ == "__main__":
     print(f"Data: {CONFIG['DATA_SOURCE']}, Method: {CONFIG['METHOD']}")
 
     X_data, labels = get_dataset(CONFIG)
+    n_clusters = len(np.unique(labels))
 
     base_embeddings = []
     for seed in tqdm(range(CONFIG["N_RUNS_BASE"])):
         emb = run_dr_method(X_data, method=CONFIG["METHOD"], random_state=seed)
         base_embeddings.append(emb)
 
-    consensus_D_base = build_consensus_distance(base_embeddings)
+    targets = {
+        method: consensus_distance(base_embeddings, method=method, n_clusters=n_clusters)
+        for method in CONFIG["CONSENSUS_METHODS"]
+    }
 
-    y_mce_base = mds_from_distance(consensus_D_base, random_state=0)
+    y_mce_base = mds_from_distance(targets["mce"], random_state=0)
     plot_scatter_with_legend(
         y_mce_base,
         labels,
@@ -160,12 +180,12 @@ if __name__ == "__main__":
         save_fig=CONFIG["SAVE_PDF"],
     )
 
-    results_single = evaluate_instability(
-        X_data, labels, y_mce_base, consensus_D_base, run_counts=[1]
+    rows = evaluate_consensus(X_data, targets, n_clusters)
+    rows.append(evaluate_clle(X_data))
+    summary = pd.DataFrame(rows)
+    summary.to_csv(
+        f"random_init_summary_{CONFIG['DATA_SOURCE']}_{CONFIG['METHOD']}.csv", index=False
     )
+    print(summary.to_string(index=False))
 
-    results_multi = evaluate_instability(
-        X_data, labels, y_mce_base, consensus_D_base, run_counts=CONFIG["RUNS_LIST"]
-    )
-
-    plot_instability_results(results_single, results_multi)
+    plot_stability(summary)
