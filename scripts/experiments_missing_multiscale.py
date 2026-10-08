@@ -2,16 +2,23 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+import pandas as pd
 from tqdm import tqdm
+from scipy.optimize import minimize
 from sklearn.manifold import TSNE, MDS
+from sklearn.manifold._t_sne import _joint_probabilities, _kl_divergence
+from sklearn.metrics import pairwise_distances
 from sklearn.preprocessing import StandardScaler
 from sklearn.experimental import enable_iterative_imputer
 from sklearn.impute import IterativeImputer
+import umap
 from median_consensus_embedding import geometric_median_matrices, normalize_embedding
 from utils_illustration import (
     get_dataset,
+    build_consensus_distance,
     mds_from_distance,
     compute_distance_matrix_embedding,
+    structure_recovery,
     plot_scatter_with_legend,
 )
 
@@ -26,10 +33,13 @@ CONFIG = {
     "EB_FILES": {"path": "./EBdata.mat", "sample_ratio": 0.1},
     "N_RUNS_BASE": 1000,
     "N_IMPUTATIONS": 50,
-    "N_EXP_A_REPEATS": 20,
+    "N_EXP_A_REPEATS": 50,
     "PERPLEXITY_A": 30,
     "PERPLEXITIES_B": [10, 30, 90, 270],
     "N_RUNS_B_PER_PERP": 20,
+    "N_RUNS_B_MULTISCALE": 20,
+    "N_NEIGHBORS_B": [5, 15, 50, 150],
+    "N_RUNS_B_PER_NEIGHBOR": 20,
     "SAVE_PDF": True,
 }
 
@@ -44,6 +54,60 @@ def run_tsne(X, perplexity=30, random_state=None):
     )
     emb = model.fit_transform(X)
     return normalize_embedding(emb)
+
+
+def run_umap(X, n_neighbors=15, random_state=None):
+    model = umap.UMAP(
+        n_components=2,
+        n_neighbors=n_neighbors,
+        metric="euclidean",
+        learning_rate=1,
+        init="random",
+        min_dist=0.1,
+        random_state=random_state,
+        n_jobs=1,
+    )
+    emb = model.fit_transform(X)
+    return normalize_embedding(emb)
+
+
+def tsne_cross_entropy(params, P, n_samples):
+    kl, grad = _kl_divergence(params, P, 1, n_samples, 2)
+    constant = 2.0 * np.dot(P, np.log(np.maximum(P, np.finfo(np.float64).eps)))
+    return kl - constant, grad
+
+
+def run_multiscale_tsne(X, perplexities, random_state=None, max_iter_per_scale=30):
+    """
+    multiscale t-SNE (Lee et al., 2015) with random initialization
+    """
+    X = np.asarray(X, dtype=np.float32)
+    n_samples = X.shape[0]
+    distances = pairwise_distances(X, metric="euclidean", squared=True)
+    probabilities = [
+        _joint_probabilities(distances, perplexity, False)
+        for perplexity in sorted(perplexities)
+    ]
+
+    params = np.random.RandomState(random_state).standard_normal(n_samples * 2)
+    for first_scale in range(len(probabilities) - 1, -1, -1):
+        P = np.mean(probabilities[first_scale:], axis=0)
+        params = minimize(
+            tsne_cross_entropy,
+            params,
+            args=(P, n_samples),
+            method="L-BFGS-B",
+            jac=True,
+            options={
+                "maxiter": max_iter_per_scale,
+                "gtol": 1e-5,
+                "ftol": 2.220446049250313e-9,
+                "maxls": 30,
+                "maxcor": 6,
+                "maxfun": np.inf,
+            },
+        ).x
+    return normalize_embedding(params.reshape(n_samples, 2))
 
 
 # functions for MI experiments
@@ -156,61 +220,88 @@ def run_experiment_A_imputation(X_df, labels, base_consensus_D):
 # functions for multiscale experiments
 
 
-def run_experiment_B_perplexity(X_df, labels):
-    print("\nExperiment B: Multiscale Consensus")
+def build_multiscale_consensus(X, run_fn, param_name, param_values, n_runs):
+    embeddings_by_param = {}
+    for value in param_values:
+        print(f"Running {param_name} = {value}")
+        embeddings_by_param[value] = [
+            run_fn(X, value, random_state=value * 1000 + i)
+            for i in tqdm(range(n_runs), leave=False)
+        ]
+    all_embeddings = [e for embs in embeddings_by_param.values() for e in embs]
+    return embeddings_by_param, build_consensus_distance(all_embeddings)
 
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X_df)
 
-    perplexities = CONFIG["PERPLEXITIES_B"]
-    all_embeddings_flat = []
-    embeddings_by_perp = {}
-    perp_representatives = {}
-
-    for perp in perplexities:
-        print(f"Running Perplexity = {perp}")
-        embeddings_this_perp = []
-
-        for i in tqdm(range(CONFIG["N_RUNS_B_PER_PERP"]), leave=False):
-            seed = perp * 1000 + i
-            emb = run_tsne(X_scaled, perplexity=perp, random_state=seed)
-            embeddings_this_perp.append(emb)
-            all_embeddings_flat.append(emb)
-
-        embeddings_by_perp[perp] = embeddings_this_perp
-        perp_representatives[perp] = embeddings_this_perp[0]
-
-    dist_mats = [compute_distance_matrix_embedding(e) for e in all_embeddings_flat]
-    D_consensus_final = geometric_median_matrices(dist_mats)
-
-    Y_final = mds_from_distance(D_consensus_final, random_state=42)
-
-    perp_distances = {p: [] for p in perplexities}
-    for perp in perplexities:
-        for emb in embeddings_by_perp[perp]:
-            D_ind = compute_distance_matrix_embedding(emb)
-            dist = np.linalg.norm(D_consensus_final - D_ind, ord="fro")
-            perp_distances[perp].append(dist)
-
+def print_distance_summary(D_consensus, embeddings_by_param, param_name):
     print("\nSummary Statistics (Distance to Final Consensus)")
-    print(f"{'Perplexity':<15} | {'Mean':<8} | {'Std':<8} | {'Min':<8} | {'Max':<8}")
+    print(f"{param_name:<15} | {'Mean':<8} | {'Std':<8} | {'Min':<8} | {'Max':<8}")
     print("-" * 55)
-    for p in perplexities:
-        d = perp_distances[p]
+    for value, embs in embeddings_by_param.items():
+        d = [
+            np.linalg.norm(D_consensus - compute_distance_matrix_embedding(e), ord="fro")
+            for e in embs
+        ]
         print(
-            f"{p:<15} | {np.mean(d):.4f}   | {np.std(d):.4f}   | {np.min(d):.4f}   | {np.max(d):.4f}"
+            f"{value:<15} | {np.mean(d):.4f}   | {np.std(d):.4f}   | {np.min(d):.4f}   | {np.max(d):.4f}"
         )
+
+
+def run_experiment_B_perplexity(X_df, labels):
+    print("\nExperiment B: Multiscale Consensus (t-SNE)")
+
+    X_scaled = StandardScaler().fit_transform(X_df)
+    embeddings_by_perp, D_consensus_final = build_multiscale_consensus(
+        X_scaled,
+        run_tsne,
+        "perplexity",
+        CONFIG["PERPLEXITIES_B"],
+        CONFIG["N_RUNS_B_PER_PERP"],
+    )
+    Y_final = mds_from_distance(D_consensus_final, random_state=42)
+    print_distance_summary(D_consensus_final, embeddings_by_perp, "Perplexity")
+
+    print("Running multiscale t-SNE")
+    multiscale_embeddings = [
+        run_multiscale_tsne(X_scaled, CONFIG["PERPLEXITIES_B"], random_state=i)
+        for i in tqdm(range(CONFIG["N_RUNS_B_MULTISCALE"]), leave=False)
+    ]
+
+    # structure recovery
+    rows = []
+    for perp, embs in embeddings_by_perp.items():
+        rows += [
+            {"method": f"t-SNE (perplexity={perp})", **structure_recovery(X_scaled, e)}
+            for e in embs
+        ]
+    rows += [
+        {"method": "Multiscale t-SNE", **structure_recovery(X_scaled, e)}
+        for e in multiscale_embeddings
+    ]
+    rows.append(
+        {"method": "MCE (multi-perplexity t-SNE)", **structure_recovery(X_scaled, Y_final)}
+    )
+    recovery = pd.DataFrame(rows).groupby("method", sort=False).agg(["mean", "std"])
+    recovery.columns = ["_".join(c) for c in recovery.columns]
+    recovery.to_csv(f"ExpB_structure_recovery_{CONFIG['DATA_SOURCE']}.csv")
+    print(recovery.to_string())
 
     plot_scatter_with_legend(
         Y_final, labels, "ExpB_Final_Consensus.pdf", CONFIG["SAVE_PDF"]
     )
 
-    for perp in perplexities:
-        title = f"Representative t-SNE (Perplexity={perp})"
+    for perp, embs in embeddings_by_perp.items():
         fname = f"ExpB_Representative_Perp{perp}.pdf"
         plot_scatter_with_legend(
-            perp_representatives[perp], labels, fname, CONFIG["SAVE_PDF"], ref_Y=Y_final
+            embs[0], labels, fname, CONFIG["SAVE_PDF"], ref_Y=Y_final
         )
+
+    plot_scatter_with_legend(
+        multiscale_embeddings[0],
+        labels,
+        "ExpB_Multiscale_tSNE.pdf",
+        CONFIG["SAVE_PDF"],
+        ref_Y=Y_final,
+    )
 
 
 if __name__ == "__main__":
