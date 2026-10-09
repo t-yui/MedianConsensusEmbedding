@@ -121,6 +121,7 @@ def evaluate_consensus(X, targets, n_clusters):
 
 def evaluate_clle(X):
     print("\n--- Evaluating C-LLE ---")
+    X = X.toarray() if hasattr(X, "toarray") else X
     embs = [
         run_lle(X, k, random_state=CONFIG["RANDOM_STATE"])
         for k in tqdm(CONFIG["LLE_NEIGHBORS"])
