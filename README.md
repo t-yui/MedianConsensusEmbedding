@@ -5,14 +5,14 @@ https://doi.org/10.48550/arXiv.2503.08103).
 
 ## Description
 
-Median Concensus Embedding (MCE) is an algorithm to obtain consensus representation of multiple embeddings via computing geometric median defined on embedding space.
-MCE can be used to (i) obtain stable visualization from multi-run with random initialization of non-liinear dimensionality reduction methods, such as t-SNE or UMAP, (ii) integrate multiple embeddings from multiply imputed data to address missing values, and (iii) integrate embeddings generated with different hyperparameters into a single multiscale consensus representation.
+Median Consensus Embedding (MCE) is an algorithm to obtain consensus representation of multiple embeddings via computing geometric median defined on embedding space.
+MCE can be used to (i) obtain stable visualization from multi-run with random initialization of non-linear dimensionality reduction methods, such as t-SNE or UMAP, (ii) integrate multiple embeddings from multiply imputed data to address missing values, and (iii) integrate embeddings generated with different hyperparameters into a single multiscale consensus representation.
 
 ## Requirements
 
 - Python ≥ 3.9.0
-- Required libraries for MCE implementation: `scikit-lean`
-- Required libraries for evaluation experiments: `scikit-lean`, `umap-learn`, `tqdm`
+- Required libraries for MCE implementation: `scikit-learn`
+- Required libraries for evaluation experiments: `scikit-learn`, `umap-learn`, `tqdm`
 
 ## License
 
@@ -36,7 +36,7 @@ y, x = MCE(
 
 `base_embeddings` (list): List of base embeddings (numpy array, shape = ($n_{\mathrm{samples}}$, $n_{\mathrm{features}}$) with typically $n_{\mathrm{features}}=2$) to be integrated
 
-`n_components` (int, default $=2$): The dimension of projected eucledian space
+`n_components` (int, default $=2$): The dimension of projected Euclidean space
 
 `rs_mds` (int, default $=1$): Random state of MDS initialization
 
@@ -66,7 +66,7 @@ python3 simulation_highdim.py
 3. Evaluation of stability
 
 ```sh
-python3 experiments_random_init.py
+python3 experiments_random_init.py[^1]
 ```
 
 4. Evaluation of instability arising from MDS
@@ -81,7 +81,8 @@ python3 experiments_mds_instability.py
 python3 experiments_missing_multiscale.py
 ```
 
+[^1]: Specify the dataset (`toxo` or `eb`) and the method (`tsne` or `umap`) in the config. The paper uses `toxo` with `tsne` and `eb` with `umap`.
+
 ## Citation
 
 Tomo, Y. & Yoneoka, D. (2025). Median Consensus Embedding for Dimensionality Reduction. *arXiv preprint arXiv:2503.08103*. 
-
