@@ -51,19 +51,31 @@ y, x = MCE(
 Set the configures of each script and datasets.
 Then, execute the following commands in your shell environment.
 
-1. Evaluation of stability of MCE
+1. Simulation experiment (low-dimensional scenarios)
+
+```sh
+python3 simulation_lowdim.py
+```
+
+2. Simulation experiment (high-dimensional scenarios)
+
+```sh
+python3 simulation_highdim.py
+```
+
+3. Evaluation of stability
 
 ```sh
 python3 experiments_random_init.py
 ```
 
-2. Evaluation of instability arising from MDS
+4. Evaluation of instability arising from MDS
 
 ```sh
 python3 experiments_mds_instability.py
 ```
 
-3. Illustration of combined approach with multiple imputation and obtaining multiscale embeddings.
+5. Illustration of combined approach with multiple imputation and obtaining multiscale embeddings.
 
 ```sh
 python3 experiments_missing_multiscale.py
