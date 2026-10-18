@@ -63,10 +63,10 @@ python3 simulation_lowdim.py
 python3 simulation_highdim.py
 ```
 
-3. Evaluation of stability
+3. Evaluation of stability[^1]
 
 ```sh
-python3 experiments_random_init.py[^1]
+python3 experiments_random_init.py
 ```
 
 4. Evaluation of instability arising from MDS
