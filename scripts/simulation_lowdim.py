@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
 from median_consensus_embedding import normalize_embedding
-from utils_illustration import (
+from utils import (
     compute_distance_matrix_embedding,
     consensus_distance,
     mds_from_distance,

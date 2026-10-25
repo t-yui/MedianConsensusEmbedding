@@ -9,7 +9,7 @@ from joblib import Parallel, delayed
 from sklearn.manifold import TSNE, MDS, LocallyLinearEmbedding
 from median_consensus_embedding import normalize_embedding
 from simulation_lowdim import make_truth, CONFIG as LOWDIM_CONFIG
-from utils_illustration import (
+from utils import (
     run_dr_method,
     run_lle,
     compute_distance_matrix_embedding,

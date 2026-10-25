@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import os
+
+for _var in ["OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"]:
+    os.environ.setdefault(_var, "1")
+
 import itertools
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from joblib import Parallel, delayed
 from tqdm import tqdm
-from utils_illustration import (
+from utils import (
     get_dataset,
     run_dr_method,
     run_lle,
@@ -30,11 +36,13 @@ CONFIG = {
     "RUNS_LIST": [2, 10, 20, 50, 100],
     "RANDOM_STATE": 0,
     "SAVE_PDF": True,
+    "N_JOBS": 4,
     "TOXO_FILES": {
         "data": "./data_Barylyuk2020ToxoLopit.csv",
         "label": "./label_Barylyuk2020ToxoLopit.csv",
     },
     "EB_FILES": {"path": "./EBdata.mat", "sample_ratio": 0.1},
+    "RESULT_DIR": "./results_illustration",
 }
 
 METHOD_LABELS = {"single": "Single run", "vm2012": "VM2012", "mce": "MCE", "clle": "C-LLE"}
@@ -43,17 +51,19 @@ AGGREGATORS = {"mce": "mce", "vm2012": "vm2012", "vm2012_full": "vm2012"}
 
 
 def run_pool(X, pool, seeds, rng):
+    seeds = list(seeds)
     if pool == "subset":
         size = int(X.shape[1] * CONFIG["SUBSET_FRACTION"])
-        return [
-            run_dr_method(
-                X[:, rng.choice(X.shape[1], size, replace=False)],
-                method=CONFIG["METHOD"],
-                random_state=int(s),
-            )
-            for s in seeds
-        ]
-    return [run_dr_method(X, method=CONFIG["METHOD"], random_state=int(s)) for s in seeds]
+        # variable subsets are drawn sequentially before the parallel runs
+        columns = [rng.choice(X.shape[1], size, replace=False) for _ in seeds]
+        return Parallel(n_jobs=CONFIG["N_JOBS"])(
+            delayed(run_dr_method)(X[:, c], method=CONFIG["METHOD"], random_state=int(s))
+            for s, c in zip(seeds, columns)
+        )
+    return Parallel(n_jobs=CONFIG["N_JOBS"])(
+        delayed(run_dr_method)(X, method=CONFIG["METHOD"], random_state=int(s))
+        for s in seeds
+    )
 
 
 def summarize(m, method, dists, recoveries, target=None):
@@ -116,6 +126,19 @@ def evaluate_consensus(X, targets, n_clusters):
         for method in methods:
             target = targets["mce"] if method == "single" else targets[method]
             rows.append(summarize(m, method, dists[method], recoveries[method], target))
+            # single run compared with the y_1000 of each other consensus method
+            if method == "single":
+                for ref in CONFIG["CONSENSUS_METHODS"]:
+                    if ref != "mce":
+                        rows.append(
+                            summarize(
+                                m,
+                                f"single_{ref}",
+                                dists[method],
+                                recoveries[method],
+                                targets[ref],
+                            )
+                        )
     return rows
 
 
@@ -158,8 +181,20 @@ def plot_stability(summary):
             )
             colors[method] = container[0].get_color()
 
-        single = summary[summary["method"] == "single"]
         for method in CONFIG["CONSENSUS_METHODS"]:
+            single_key = "single" if method == "mce" else f"single_{method}"
+            single = summary[summary["method"] == single_key]
+            if col == "s_true" and single_key != "single":
+                plt.errorbar(
+                    single["m"],
+                    single[f"{col}_mean"],
+                    yerr=single[f"{col}_sd"],
+                    fmt="o",
+                    capsize=5,
+                    markersize=10,
+                    markerfacecolor="none",
+                    color=colors["single"],
+                )
             first = summary[summary["method"] == method].sort_values("m")
             plt.plot(
                 [single["m"].iloc[0], first["m"].iloc[0]],
@@ -190,6 +225,10 @@ if __name__ == "__main__":
 
     X_data, labels = get_dataset(CONFIG)
     n_clusters = len(np.unique(labels))
+
+    # save all outputs (csv and pdf) in RESULT_DIR
+    os.makedirs(CONFIG["RESULT_DIR"], exist_ok=True)
+    os.chdir(CONFIG["RESULT_DIR"])
 
     base_rng = np.random.default_rng(CONFIG["RANDOM_STATE"] + 1)
     base_pools = {
