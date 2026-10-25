@@ -15,6 +15,9 @@ run() {
 run simulation_lowdim
 run simulation_highdim
 
+# download data
+run download_data
+
 # evaluation of rapid convergence and stability
 run experiments_random_init
 run experiments_random_init_eb_umap
