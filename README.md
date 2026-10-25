@@ -48,8 +48,21 @@ y, x = MCE(
 
 ### Perform evaluation experiments
 
-Set the configures of each script and datasets.
-Then, execute the following commands in your shell environment.
+For preparation, execute the following commands.
+
+```
+python3.9 -m venv .venv
+. .venv/bin/activate
+python3 -m pip install -r requirements.txt
+```
+
+To perform all experiments, execute the following command.
+
+```sh
+bash run_all_experiments.sh
+```
+
+To perform each experiment separately, set the configures of each script and datasets and execute the following commands.
 
 1. Simulation experiment (low-dimensional scenarios)
 
@@ -75,10 +88,16 @@ python3 experiments_random_init.py
 python3 experiments_mds_instability.py
 ```
 
-5. Illustration of combined approach with multiple imputation and obtaining multiscale embeddings.
+5. Illustration of combined approach with multiple imputation.
 
 ```sh
-python3 experiments_missing_multiscale.py
+python3 experiments_missing.py
+```
+
+6. Illustration of integrating multi-scale embeddings.
+
+```sh
+python3 experiments_multiscale.py
 ```
 
 [^1]: Specify the dataset (`toxo` or `eb`) and the method (`tsne` or `umap`) in the config. The paper uses `toxo` with `tsne` and `eb` with `umap`.
