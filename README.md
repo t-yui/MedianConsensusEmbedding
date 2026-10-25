@@ -51,7 +51,7 @@ y, x = MCE(
 For preparation, execute the following commands.
 
 ```
-python3.9 -m venv .venv
+python3 -m venv .venv
 . .venv/bin/activate
 python3 -m pip install -r requirements.txt
 ```
