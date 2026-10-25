@@ -163,13 +163,13 @@ def plot_stability(summary):
         ("s_true", r"Distance to $\hat{y}_{1000}$", "instability_plot_1_distance_to_base"),
         ("s_pair", "Distance to each other", "instability_plot_2_pairwise"),
     ]
+    colors = {"single": "C0", "vm2012": "C1", "mce": "C2"}
 
     for col, ylabel, name in panels:
         plt.figure(figsize=(12, 6))
-        colors = {}
-        for method in ["single"] + CONFIG["CONSENSUS_METHODS"]:
-            part = summary[summary["method"] == method]
-            container = plt.errorbar(
+        for method in CONFIG["CONSENSUS_METHODS"]:
+            part = summary[summary["method"] == method].sort_values("m")
+            plt.errorbar(
                 part["m"],
                 part[f"{col}_mean"],
                 yerr=part[f"{col}_sd"],
@@ -177,32 +177,42 @@ def plot_stability(summary):
                 capsize=5,
                 markersize=10,
                 linewidth=2,
+                color=colors[method],
                 label=METHOD_LABELS[method],
             )
-            colors[method] = container[0].get_color()
 
-        for method in CONFIG["CONSENSUS_METHODS"]:
             single_key = "single" if method == "mce" else f"single_{method}"
             single = summary[summary["method"] == single_key]
-            if col == "s_true" and single_key != "single":
-                plt.errorbar(
-                    single["m"],
-                    single[f"{col}_mean"],
-                    yerr=single[f"{col}_sd"],
-                    fmt="o",
-                    capsize=5,
-                    markersize=10,
-                    markerfacecolor="none",
-                    color=colors["single"],
-                )
-            first = summary[summary["method"] == method].sort_values("m")
+            marker_color = colors[method] if col == "s_true" else colors["single"]
+            plt.errorbar(
+                single["m"],
+                single[f"{col}_mean"],
+                yerr=single[f"{col}_sd"],
+                fmt="o",
+                capsize=5,
+                markersize=10,
+                markerfacecolor="white",
+                markeredgewidth=2,
+                color=marker_color,
+            )
             plt.plot(
-                [single["m"].iloc[0], first["m"].iloc[0]],
-                [single[f"{col}_mean"].iloc[0], first[f"{col}_mean"].iloc[0]],
+                [single["m"].iloc[0], part["m"].iloc[0]],
+                [single[f"{col}_mean"].iloc[0], part[f"{col}_mean"].iloc[0]],
                 linestyle=":",
                 linewidth=2,
-                color=colors["single"],
+                color=colors[method],
             )
+
+        plt.plot(
+            [],
+            [],
+            "o",
+            markersize=10,
+            markerfacecolor="white",
+            markeredgewidth=2,
+            color="gray" if col == "s_true" else colors["single"],
+            label=METHOD_LABELS["single"],
+        )
         plt.xlabel(r"Number of embeddings ($m$)", fontsize=24)
         plt.ylabel(ylabel, fontsize=24)
         plt.xticks(x_vals, fontsize=20)
@@ -226,7 +236,6 @@ if __name__ == "__main__":
     X_data, labels = get_dataset(CONFIG)
     n_clusters = len(np.unique(labels))
 
-    # save all outputs (csv and pdf) in RESULT_DIR
     os.makedirs(CONFIG["RESULT_DIR"], exist_ok=True)
     os.chdir(CONFIG["RESULT_DIR"])
 
