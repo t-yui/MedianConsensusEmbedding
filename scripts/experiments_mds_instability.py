@@ -13,7 +13,7 @@ from joblib import Parallel, delayed
 from tqdm import tqdm
 from sklearn.manifold import MDS
 from median_consensus_embedding import geometric_median_matrices, normalize_embedding
-from utils_illustration import (
+from utils import (
     get_dataset,
     run_dr_method,
     mds_from_distance,
