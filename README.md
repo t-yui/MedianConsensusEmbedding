@@ -76,25 +76,31 @@ python3 simulation_lowdim.py
 python3 simulation_highdim.py
 ```
 
-3. Evaluation of stability[^1]
+3. Downloading data before illustration experiments
+
+```sh
+python3 download_data.py
+```
+
+4. Evaluation of stability[^1]
 
 ```sh
 python3 experiments_random_init.py
 ```
 
-4. Evaluation of instability arising from MDS
+5. Evaluation of instability arising from MDS
 
 ```sh
 python3 experiments_mds_instability.py
 ```
 
-5. Illustration of combined approach with multiple imputation.
+6. Illustration of combined approach with multiple imputation.
 
 ```sh
 python3 experiments_missing.py
 ```
 
-6. Illustration of integrating multi-scale embeddings.
+7. Illustration of integrating multi-scale embeddings.
 
 ```sh
 python3 experiments_multiscale.py
