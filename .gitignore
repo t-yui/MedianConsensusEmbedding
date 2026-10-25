@@ -8,6 +8,7 @@
 !*.py
 
 !run_all_experiments.sh
+!requirements.txt
 !.gitignore
 !.gitkeep
 !LICENSE
