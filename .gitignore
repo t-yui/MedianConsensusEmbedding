@@ -7,6 +7,7 @@
 # allow a specified file
 !*.py
 
+!run_all_experiments.sh
 !.gitignore
 !.gitkeep
 !LICENSE
