@@ -79,8 +79,8 @@ def summarize(m, method, dists, recoveries, target=None):
     row = {
         "m": m,
         "method": method,
-        "s_true_mean": np.mean(to_target),
-        "s_true_sd": np.std(to_target),
+        "s_ref_mean": np.mean(to_target),
+        "s_ref_sd": np.std(to_target),
         "s_pair_mean": np.mean(pairwise) if pairwise else np.nan,
         "s_pair_sd": np.std(pairwise) if pairwise else np.nan,
     }
@@ -160,7 +160,7 @@ def evaluate_clle(X):
 def plot_stability(summary):
     x_vals = [1] + CONFIG["RUNS_LIST"]
     panels = [
-        ("s_true", r"Distance to $\hat{y}_{1000}$", "instability_plot_1_distance_to_base"),
+        ("s_ref", r"Distance to $\hat{y}_{1000}$", "instability_plot_1_distance_to_base"),
         ("s_pair", "Distance to each other", "instability_plot_2_pairwise"),
     ]
     colors = {"single": "C0", "vm2012": "C1", "mce": "C2"}
@@ -183,7 +183,7 @@ def plot_stability(summary):
 
             single_key = "single" if method == "mce" else f"single_{method}"
             single = summary[summary["method"] == single_key]
-            marker_color = colors[method] if col == "s_true" else colors["single"]
+            marker_color = colors[method] if col == "s_ref" else colors["single"]
             plt.errorbar(
                 single["m"],
                 single[f"{col}_mean"],
@@ -210,7 +210,7 @@ def plot_stability(summary):
             markersize=10,
             markerfacecolor="white",
             markeredgewidth=2,
-            color="gray" if col == "s_true" else colors["single"],
+            color="gray" if col == "s_ref" else colors["single"],
             label=METHOD_LABELS["single"],
         )
         plt.xlabel(r"Number of embeddings ($m$)", fontsize=24)

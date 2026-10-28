@@ -178,9 +178,9 @@ def run_repeat(H, Z, scenario, s, base, b, use_subset, targets, repeat, n_compon
     rows = []
     for m, method in keys:
         if method == "single":
-            s_true = np.nan
+            s_ref = np.nan
         else:
-            s_true = mean_distance_to_target(
+            s_ref = mean_distance_to_target(
                 dists[(m, method)], targets[method]
             )
 
@@ -193,7 +193,7 @@ def run_repeat(H, Z, scenario, s, base, b, use_subset, targets, repeat, n_compon
                 "m": m,
                 "method": method,
                 "s_pair": mean_pairwise_distance(dists[(m, method)]),
-                "s_true": s_true,
+                "s_ref": s_ref,
                 "q_local": rec["q_local"],
                 "q_global": rec["q_global"],
                 "auc_rnx": rec["auc_rnx"],
@@ -217,7 +217,7 @@ def run_clle(D, Z, scenario, repeat, n_components=2):
         "m": len(CONFIG["LLE_NEIGHBORS"]),
         "method": "clle",
         "s_pair": np.nan,
-        "s_true": np.nan,
+        "s_ref": np.nan,
         "q_local": rec["q_local"],
         "q_global": rec["q_global"],
         "auc_rnx": rec["auc_rnx"],
@@ -269,7 +269,7 @@ if __name__ == "__main__":
             rows.extend(row for result in results for row in result)
 
     raw = pd.DataFrame(rows)
-    metrics = ["s_pair", "s_true", "q_local", "q_global", "auc_rnx"]
+    metrics = ["s_pair", "s_ref", "q_local", "q_global", "auc_rnx"]
     summary = (
         raw.groupby(["scenario", "base", "m", "method"], sort=False)[metrics]
         .agg(["mean", "std"])
