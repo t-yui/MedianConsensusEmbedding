@@ -31,3 +31,6 @@ run experiments_multiscale
 # instability of the MDS step
 run experiments_mds_instability
 run experiments_mds_instability_eb_umap
+
+# creating tables of the paper
+run make_tables
