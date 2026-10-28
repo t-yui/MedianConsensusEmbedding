@@ -45,7 +45,7 @@ CONFIG = {
     "RESULT_DIR": "./results_illustration",
 }
 
-METHOD_LABELS = {"single": "Single run", "vm2012": "VM2012", "mce": "MCE", "clle": "C-LLE"}
+METHOD_LABELS = {"single": "Single", "vm2012": "VM2012", "mce": "MCE", "clle": "C-LLE"}
 POOLS = {"single": "full", "mce": "full", "vm2012": "subset", "vm2012_full": "full"}
 AGGREGATORS = {"mce": "mce", "vm2012": "vm2012", "vm2012_full": "vm2012"}
 
@@ -126,7 +126,6 @@ def evaluate_consensus(X, targets, n_clusters):
         for method in methods:
             target = targets["mce"] if method == "single" else targets[method]
             rows.append(summarize(m, method, dists[method], recoveries[method], target))
-            # single run compared with the y_1000 of each other consensus method
             if method == "single":
                 for ref in CONFIG["CONSENSUS_METHODS"]:
                     if ref != "mce":
@@ -160,10 +159,11 @@ def evaluate_clle(X):
 def plot_stability(summary):
     x_vals = [1] + CONFIG["RUNS_LIST"]
     panels = [
-        ("s_ref", r"Distance to $\hat{y}_{1000}$", "instability_plot_1_distance_to_base"),
-        ("s_pair", "Distance to each other", "instability_plot_2_pairwise"),
+        ("s_ref", r"Distance to $\hat{y}_{1000}$ ($S_{\mathrm{ref}}$)", "instability_plot_1_distance_to_base"),
+        ("s_pair", r"Distance to each other  ($S_{\mathrm{pair}}$)", "instability_plot_2_pairwise"),
     ]
     colors = {"single": "C0", "vm2012": "C1", "mce": "C2"}
+    markers = {"vm2012": "^", "mce": "o"}
 
     for col, ylabel, name in panels:
         plt.figure(figsize=(12, 6))
@@ -173,7 +173,7 @@ def plot_stability(summary):
                 part["m"],
                 part[f"{col}_mean"],
                 yerr=part[f"{col}_sd"],
-                fmt="-o",
+                fmt="-" + markers[method],
                 capsize=5,
                 markersize=10,
                 linewidth=2,
