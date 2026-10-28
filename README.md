@@ -96,16 +96,22 @@ python3 experiments_random_init.py
 python3 experiments_mds_instability.py
 ```
 
-6. Illustration of combined approach with multiple imputation.
+6. Illustration of combined approach with multiple imputation
 
 ```sh
 python3 experiments_missing.py
 ```
 
-7. Illustration of integrating multi-scale embeddings.
+7. Illustration of integrating multi-scale embeddings
 
 ```sh
 python3 experiments_multiscale.py
+```
+
+8. Creating tables and abstracting values in the paper
+
+```sh
+python3 make_tables.py
 ```
 
 [^1]: Specify the dataset (`toxo` or `eb`) and the method (`tsne` or `umap`) in the config. The paper uses `toxo` with `tsne` and `eb` with `umap`.
