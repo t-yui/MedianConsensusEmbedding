@@ -204,11 +204,20 @@ def run_repeat(H, Z, scenario, s, base, b, use_subset, targets, repeat, n_compon
     return rows
 
 
-def run_clle(D, Z, scenario, repeat, n_components=2):
-    recoveries = [
-        structure_recovery(Z, mds_dim(D, repeat * CONFIG["N_EXEC"] + e, n_components))
-        for e in range(CONFIG["N_EXEC"])
-    ]
+def run_clle(D, Z, scenario, repeat, n_components=2, H=None, s=None):
+    rng = np.random.default_rng([CONFIG["RANDOM_STATE"], s, len(CONFIG["BASES"]), repeat])
+    recoveries = []
+    for e in range(CONFIG["N_EXEC"]):
+        if H is not None:
+            draws = draw_runs(rng, len(CONFIG["LLE_NEIGHBORS"]), True)
+            embs = [
+                run_lle_dim(H[:, subset], k, CONFIG["RANDOM_STATE"], n_components)
+                for k, (_, subset) in zip(CONFIG["LLE_NEIGHBORS"], draws)
+            ]
+            D = consensus_distance(embs, method="mode")
+        recoveries.append(
+            structure_recovery(Z, mds_dim(D, repeat * CONFIG["N_EXEC"] + e, n_components))
+        )
     rec = pd.DataFrame(recoveries).mean()
     return {
         "scenario": scenario,
@@ -245,7 +254,10 @@ if __name__ == "__main__":
         D_clle = consensus_distance(lle_embeddings, method="mode")
         rows.extend(
             Parallel(n_jobs=CONFIG["N_JOBS"])(
-                delayed(run_clle)(D_clle, Z, scenario, repeat, n_components)
+                delayed(run_clle)(
+                    D_clle, Z, scenario, repeat, n_components,
+                    H if setting["subset"] else None, s,
+                )
                 for repeat in range(CONFIG["N_REPEATS"])
             )
         )
