@@ -14,6 +14,7 @@ from sklearn.manifold import TSNE
 from sklearn.preprocessing import StandardScaler
 from sklearn.experimental import enable_iterative_imputer
 from sklearn.impute import IterativeImputer
+from sklearn.linear_model import BayesianRidge
 from median_consensus_embedding import geometric_median_matrices, normalize_embedding
 from utils import (
     get_dataset,
@@ -82,16 +83,9 @@ def run_imputation_repeat(X_df, rate, pattern, i, base_consensus_D):
     for j in range(CONFIG["N_IMPUTATIONS"]):
         seed = i * 1000 + j
         imputer = IterativeImputer(
-            max_iter=10, random_state=seed, sample_posterior=True, verbose=0
+            estimator=BayesianRidge(), max_iter=10, random_state=seed, sample_posterior=True, verbose=0
         )
-
-        try:
-            X_imp = imputer.fit_transform(X_miss_df)
-        except:
-            from sklearn.impute import SimpleImputer
-
-            X_imp = SimpleImputer().fit_transform(X_miss_df)
-
+        X_imp = imputer.fit_transform(X_miss_df)
         X_imp_scaled = scaler.fit_transform(X_imp)
         emb = run_tsne(X_imp_scaled, perplexity=CONFIG["PERPLEXITY"], random_state=seed)
         imp_embeddings.append(emb)
