@@ -80,8 +80,12 @@ def convert_toxo(rda_path, data_csv, label_csv):
 
     data_df.to_csv(data_csv)
     label_df.to_csv(label_csv)
-    print(f"Saved: {data_csv} ({data_df.shape[0]} proteins x {data_df.shape[1]} fractions)")
-    print(f"Saved: {label_csv} ({(label_df['markers'] != 'unknown').sum()} marker proteins)")
+    print(
+        f"Saved: {data_csv} ({data_df.shape[0]} proteins x {data_df.shape[1]} fractions)"
+    )
+    print(
+        f"Saved: {label_csv} ({(label_df['markers'] != 'unknown').sum()} marker proteins)"
+    )
 
 
 if __name__ == "__main__":

@@ -18,6 +18,7 @@ from median_consensus_embedding import geometric_median_matrices, normalize_embe
 
 # utils for pre-processing data
 
+
 def load_data_toxo(data_file, label_file):
     """
     loading and pre-processing TL data
@@ -97,6 +98,7 @@ def get_dataset(config):
 
 # utils for computation and visualization
 
+
 def compute_distance_matrix_embedding(Y):
     return pairwise_distances(Y, metric="euclidean")
 
@@ -170,7 +172,9 @@ def r_squared_index(Y, n_clusters, random_state=0):
     return 1 - km.inertia_ / total
 
 
-def select_embeddings_vm2012(embeddings_list, n_clusters, threshold=0.15, random_state=0):
+def select_embeddings_vm2012(
+    embeddings_list, n_clusters, threshold=0.15, random_state=0
+):
     rsi = np.array(
         [r_squared_index(e, n_clusters, random_state) for e in embeddings_list]
     )
@@ -270,17 +274,18 @@ def plot_scatter_with_legend(Y, labels, filename=None, save_fig=False, ref_Y=Non
 
 
 # utils for evaluation
- 
+
+
 def mean_pairwise_distance(dist_mats):
     return np.mean(
         [np.linalg.norm(a - b, "fro") for a, b in itertools.combinations(dist_mats, 2)]
     )
- 
- 
+
+
 def mean_distance_to_target(dist_mats, target):
     return np.mean([np.linalg.norm(D - target, "fro") for D in dist_mats])
- 
- 
+
+
 def rank_matrix(D):
     D = D.copy()
     np.fill_diagonal(D, -np.inf)
@@ -289,8 +294,8 @@ def rank_matrix(D):
     ranks = np.empty((n, n), dtype=int)
     ranks[np.arange(n)[:, None], order] = np.arange(n)
     return ranks
- 
- 
+
+
 def structure_recovery(Z, Y):
     """
     Q_local, Q_global, and AUC of R_NX of the embedding Y against the truth Z
@@ -298,20 +303,20 @@ def structure_recovery(Z, Y):
     n = Z.shape[0]
     high = rank_matrix(compute_distance_matrix_embedding(Z))
     low = rank_matrix(compute_distance_matrix_embedding(Y))
- 
+
     max_rank = np.maximum(high, low)
     np.fill_diagonal(max_rank, n)
     counts = np.bincount(max_rank.ravel(), minlength=n + 1)
- 
+
     K = np.arange(1, n)
     qnx = np.cumsum(counts)[1:n] / (n * K)
     lcmc = qnx - K / (n - 1)
     k_max = np.argmax(lcmc) + 1
     q_local = np.mean(qnx[:k_max])
     q_global = np.mean(qnx[k_max - 1 :])
- 
+
     K = np.arange(1, n - 1)
     rnx = ((n - 1) * qnx[:-1] - K) / (n - 1 - K)
     auc_rnx = np.sum(rnx / K) / np.sum(1 / K)
- 
+
     return {"q_local": q_local, "q_global": q_global, "auc_rnx": auc_rnx}

@@ -73,9 +73,13 @@ if __name__ == "__main__":
     os.makedirs(CONFIG["RESULT_DIR"], exist_ok=True)
     tag = f"{dataset_name}_{method}"
     pd.DataFrame(
-        [{"trial_1": i, "trial_2": j, "distance": d} for (i, j), d in zip(pairs, distances)]
+        [
+            {"trial_1": i, "trial_2": j, "distance": d}
+            for (i, j), d in zip(pairs, distances)
+        ]
     ).to_csv(
-        os.path.join(CONFIG["RESULT_DIR"], f"mds_instability_raw_{tag}.csv"), index=False
+        os.path.join(CONFIG["RESULT_DIR"], f"mds_instability_raw_{tag}.csv"),
+        index=False,
     )
     pd.DataFrame(
         [

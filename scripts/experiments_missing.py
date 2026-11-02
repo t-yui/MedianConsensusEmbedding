@@ -93,9 +93,7 @@ def run_imputation_repeat(X_df, rate, pattern, i, base_consensus_D):
             X_imp = SimpleImputer().fit_transform(X_miss_df)
 
         X_imp_scaled = scaler.fit_transform(X_imp)
-        emb = run_tsne(
-            X_imp_scaled, perplexity=CONFIG["PERPLEXITY"], random_state=seed
-        )
+        emb = run_tsne(X_imp_scaled, perplexity=CONFIG["PERPLEXITY"], random_state=seed)
         imp_embeddings.append(emb)
 
     D_imp_consensus = geometric_median_matrices(
@@ -148,9 +146,7 @@ def run_imputation_experiment(X_df, labels, base_consensus_D):
             for i, d in enumerate(scenario_distances[s])
         ]
     )
-    raw.to_csv(
-        f"missing_raw_{CONFIG['DATA_SOURCE']}_tsne.csv", index=False
-    )
+    raw.to_csv(f"missing_raw_{CONFIG['DATA_SOURCE']}_tsne.csv", index=False)
     summary = (
         raw.groupby(["rate", "pattern"], sort=False)["distance"]
         .agg(
@@ -161,13 +157,14 @@ def run_imputation_experiment(X_df, labels, base_consensus_D):
         )
         .reset_index()
     )
-    summary.to_csv(
-        f"missing_summary_{CONFIG['DATA_SOURCE']}_tsne.csv", index=False
-    )
+    summary.to_csv(f"missing_summary_{CONFIG['DATA_SOURCE']}_tsne.csv", index=False)
 
     y_base = mds_from_distance(base_consensus_D, random_state=0)
     plot_scatter_with_legend(
-        y_base, labels, f"missing_base_consensus_embedding_{CONFIG['DATA_SOURCE']}_tsne.pdf", CONFIG["SAVE_PDF"]
+        y_base,
+        labels,
+        f"missing_base_consensus_embedding_{CONFIG['DATA_SOURCE']}_tsne.pdf",
+        CONFIG["SAVE_PDF"],
     )
 
     for s, y_scen in scenario_example_plots.items():
@@ -187,7 +184,9 @@ if __name__ == "__main__":
     scaler = StandardScaler()
     X_full_scaled = scaler.fit_transform(X_df)
     base_embeddings = Parallel(n_jobs=CONFIG["N_JOBS"])(
-        delayed(run_tsne)(X_full_scaled, perplexity=CONFIG["PERPLEXITY"], random_state=i)
+        delayed(run_tsne)(
+            X_full_scaled, perplexity=CONFIG["PERPLEXITY"], random_state=i
+        )
         for i in tqdm(range(CONFIG["N_RUNS_BASE"]))
     )
     base_dist_mats = [compute_distance_matrix_embedding(e) for e in base_embeddings]

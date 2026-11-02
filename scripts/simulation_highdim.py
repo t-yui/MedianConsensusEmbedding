@@ -51,6 +51,7 @@ CONFIG = {
 
 # high-dimensional data
 
+
 def make_data(Z, rng):
     s_Z = np.sqrt(np.mean(np.var(Z, axis=0)))
     n = Z.shape[0]
@@ -71,12 +72,15 @@ def make_data(Z, rng):
 
 # embeddings
 
+
 def draw_runs(rng, n_runs, use_subset):
     seeds = rng.integers(0, 2**31 - 1, n_runs)
     subsets = [
-        rng.choice(CONFIG["N_FEATURES"], CONFIG["SUBSET_SIZE"], replace=False)
-        if use_subset
-        else None
+        (
+            rng.choice(CONFIG["N_FEATURES"], CONFIG["SUBSET_SIZE"], replace=False)
+            if use_subset
+            else None
+        )
         for _ in range(n_runs)
     ]
     return list(zip(seeds, subsets))
@@ -135,11 +139,11 @@ def mds_dim(D, random_state, n_components=2):
 
 # simulation
 
+
 def compute_targets(H, base, use_subset, rng, n_components=2):
     draws = draw_runs(rng, CONFIG["N_REF"], use_subset)
     ref = Parallel(n_jobs=CONFIG["N_JOBS"])(
-        delayed(run_base)(H, base, seed, subset, n_components)
-        for seed, subset in draws
+        delayed(run_base)(H, base, seed, subset, n_components) for seed, subset in draws
     )
     return {
         method: consensus_distance(ref, method=method, n_clusters=CONFIG["N_CLUSTERS"])
@@ -180,9 +184,7 @@ def run_repeat(H, Z, scenario, s, base, b, use_subset, targets, repeat, n_compon
         if method == "single":
             s_ref = np.nan
         else:
-            s_ref = mean_distance_to_target(
-                dists[(m, method)], targets[method]
-            )
+            s_ref = mean_distance_to_target(dists[(m, method)], targets[method])
 
         rec = pd.DataFrame(recoveries[(m, method)]).mean()
         rows.append(
@@ -204,9 +206,7 @@ def run_repeat(H, Z, scenario, s, base, b, use_subset, targets, repeat, n_compon
 
 def run_clle(D, Z, scenario, repeat, n_components=2):
     recoveries = [
-        structure_recovery(
-            Z, mds_dim(D, repeat * CONFIG["N_EXEC"] + e, n_components)
-        )
+        structure_recovery(Z, mds_dim(D, repeat * CONFIG["N_EXEC"] + e, n_components))
         for e in range(CONFIG["N_EXEC"])
     ]
     rec = pd.DataFrame(recoveries).mean()
@@ -261,7 +261,15 @@ if __name__ == "__main__":
             )
             results = Parallel(n_jobs=CONFIG["N_JOBS"], verbose=10)(
                 delayed(run_repeat)(
-                    H, Z, scenario, s, base, b, setting["subset"], targets, repeat,
+                    H,
+                    Z,
+                    scenario,
+                    s,
+                    base,
+                    b,
+                    setting["subset"],
+                    targets,
+                    repeat,
                     n_components,
                 )
                 for repeat in range(CONFIG["N_REPEATS"])

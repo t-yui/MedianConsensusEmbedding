@@ -39,6 +39,7 @@ CONFIG = {
 
 # true configuration and synthetic embeddings
 
+
 def make_truth(rng):
     angles = np.pi / 2 + 2 * np.pi * np.arange(3) / 3
     directions = np.column_stack([np.cos(angles), np.sin(angles)])
@@ -73,6 +74,7 @@ def generate_embedding(truth, sigma_L, sigma_G, pi, rng):
 
 
 # simulation
+
 
 def compute_targets(truth, params, rng):
     ref = [generate_embedding(truth, **params, rng=rng) for _ in range(CONFIG["N_REF"])]
@@ -114,9 +116,7 @@ def run_repeat(truth, scenario, params, targets, repeat):
         if method == "single":
             s_ref = np.nan
         else:
-            s_ref = mean_distance_to_target(
-                dists[(m, method)], targets[method]
-            )
+            s_ref = mean_distance_to_target(dists[(m, method)], targets[method])
 
         rec = pd.DataFrame(recoveries[(m, method)]).mean()
         rows.append(
@@ -163,5 +163,7 @@ if __name__ == "__main__":
     ]
 
     raw.to_csv(os.path.join(CONFIG["RESULT_DIR"], "lowdim_raw.csv"), index=False)
-    summary.to_csv(os.path.join(CONFIG["RESULT_DIR"], "lowdim_summary.csv"), index=False)
+    summary.to_csv(
+        os.path.join(CONFIG["RESULT_DIR"], "lowdim_summary.csv"), index=False
+    )
     print(summary[summary["m"].isin([1, 10])].to_string(index=False))

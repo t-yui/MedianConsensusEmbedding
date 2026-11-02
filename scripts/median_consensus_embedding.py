@@ -6,7 +6,6 @@ from sklearn.manifold import MDS
 from sklearn.metrics import pairwise_distances
 
 
-
 def geometric_median_matrices(X_list, eps=1e-15, tol=1e-5, max_iter=500):
     z = np.mean(np.array(X_list), axis=0)
     for _ in range(max_iter):

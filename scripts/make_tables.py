@@ -65,10 +65,17 @@ def text_row(section, description, mean, sd=None, digits=2):
     text = f"{mean:.{digits}f}"
     if sd is not None:
         text += f" (SD: {sd:.{digits}f})"
-    return {"Section": section, "Description": description, "Mean": mean, "SD": sd, "Text": text}
+    return {
+        "Section": section,
+        "Description": description,
+        "Mean": mean,
+        "SD": sd,
+        "Text": text,
+    }
 
 
 # simulation
+
 
 def make_simulation_tables():
     lowdim = pd.read_csv(CONFIG["SIMULATION_DIR"] / "lowdim_summary.csv")
@@ -85,10 +92,15 @@ def make_simulation_tables():
             "MCE": get_row(part, method="mce"),
         }
         rows.append(("Low-dimensional", name, rs))
-    for base, group in [("tsne", "High-dimensional with t-SNE"), ("umap", "High-dimensional with UMAP")]:
+    for base, group in [
+        ("tsne", "High-dimensional with t-SNE"),
+        ("umap", "High-dimensional with UMAP"),
+    ]:
         for scenario, name in HIGHDIM_SCENARIOS.items():
             part = highdim[
-                (highdim["scenario"] == scenario) & (highdim["base"] == base) & (highdim["m"] == 10)
+                (highdim["scenario"] == scenario)
+                & (highdim["base"] == base)
+                & (highdim["m"] == 10)
             ]
             rs = {
                 "C-LLE": get_row(clle, scenario=scenario),
@@ -101,16 +113,25 @@ def make_simulation_tables():
         row = {"Group": group, "Scenario": name}
         for k in METRICS:
             for label, r in rs.items():
-                row[f"{METRIC_LABELS[k]} {label}"] = cells(r, [k], sd=None, s_digits=2)[METRIC_LABELS[k]]
+                row[f"{METRIC_LABELS[k]} {label}"] = cells(r, [k], sd=None, s_digits=2)[
+                    METRIC_LABELS[k]
+                ]
         table.append(row)
     save(pd.DataFrame(table), "main_tab_simulation.csv")
 
     # supplementary: tab:sim_lowdim
-    labels = {"single": "Single", "mode": "C-LLE-type", "vm2012": "VM2012-type", "mce": "MCE"}
+    labels = {
+        "single": "Single",
+        "mode": "C-LLE-type",
+        "vm2012": "VM2012-type",
+        "mce": "MCE",
+    }
     table = []
     for scenario, name in LOWDIM_SCENARIOS.items():
         part = lowdim[lowdim["scenario"] == scenario]
-        keys = [(1, "single")] + [(m, method) for m in M_LIST for method in ["mode", "vm2012", "mce"]]
+        keys = [(1, "single")] + [
+            (m, method) for m in M_LIST for method in ["mode", "vm2012", "mce"]
+        ]
         for i, (m, method) in enumerate(keys):
             r = get_row(part, m=m, method=method)
             row = {"Scenario": name if i == 0 else "", "m": m, "Method": labels[method]}
@@ -122,18 +143,29 @@ def make_simulation_tables():
     for base in ["tsne", "umap"]:
         table = []
         for scenario, name in HIGHDIM_SCENARIOS.items():
-            part = highdim[(highdim["scenario"] == scenario) & (highdim["base"] == base)]
-            keys = [(1, "single")] + [(m, method) for m in M_LIST for method in ["vm2012", "mce"]]
+            part = highdim[
+                (highdim["scenario"] == scenario) & (highdim["base"] == base)
+            ]
+            keys = [(1, "single")] + [
+                (m, method) for m in M_LIST for method in ["vm2012", "mce"]
+            ]
             for i, (m, method) in enumerate(keys):
                 r = get_row(part, m=m, method=method)
-                row = {"Scenario": name if i == 0 else "", "m": m, "Method": labels[method]}
+                row = {
+                    "Scenario": name if i == 0 else "",
+                    "m": m,
+                    "Method": labels[method],
+                }
                 table.append({**row, **cells(r, METRICS)})
             r = get_row(clle, scenario=scenario)
-            table.append({"Scenario": "", "m": "--", "Method": "C-LLE", **cells(r, METRICS)})
+            table.append(
+                {"Scenario": "", "m": "--", "Method": "C-LLE", **cells(r, METRICS)}
+            )
         save(pd.DataFrame(table), f"supp_tab_sim_highdim_{base}.csv")
 
 
 # evaluation of rapid convergence and stability
+
 
 def make_random_init_tables():
     metrics = ["s_ref", "s_pair", "q_local", "q_global", "auc_rnx"]
@@ -148,10 +180,21 @@ def make_random_init_tables():
         # supplementary: tab:random_init_toxo and tab:random_init_eb
         table = []
         r = get_row(summary, method="single")
-        table.append({"m": 1, "Method": "Single (S_ref: y_1000 of MCE)", **cells(r, metrics, "sd", 2)})
+        table.append(
+            {
+                "m": 1,
+                "Method": "Single (S_ref: y_1000 of MCE)",
+                **cells(r, metrics, "sd", 2),
+            }
+        )
         r = get_row(summary, method="single_vm2012")
         row = {k: "" for k in ["m", "Method"] + [METRIC_LABELS[k] for k in metrics]}
-        row.update({"Method": "Single (S_ref: y_1000 of VM2012)", **cells(r, ["s_ref"], "sd", 2)})
+        row.update(
+            {
+                "Method": "Single (S_ref: y_1000 of VM2012)",
+                **cells(r, ["s_ref"], "sd", 2),
+            }
+        )
         table.append(row)
         for m in sorted(summary.loc[summary["method"] == "mce", "m"]):
             for key, label in labels.items():
@@ -164,21 +207,42 @@ def make_random_init_tables():
         # main text values
         for key, label in [("mce", "MCE"), ("vm2012", "VM2012")]:
             r = get_row(summary, m=10, method=key)
-            text.append(text_row(section, f"S_pair of {label} with m=10, {name}", r["s_pair_mean"]))
-        for key, label in [("single", "single embedding"), ("mce", "MCE with m=10"), ("vm2012", "VM2012 with m=10"), ("clle", "C-LLE")]:
-            r = get_row(summary, method=key) if key in ["single", "clle"] else get_row(summary, m=10, method=key)
-            text.append(text_row(section, f"AUC of {label}, {name}", r["auc_rnx_mean"], digits=3))
+            text.append(
+                text_row(
+                    section, f"S_pair of {label} with m=10, {name}", r["s_pair_mean"]
+                )
+            )
+        for key, label in [
+            ("single", "single embedding"),
+            ("mce", "MCE with m=10"),
+            ("vm2012", "VM2012 with m=10"),
+            ("clle", "C-LLE"),
+        ]:
+            r = (
+                get_row(summary, method=key)
+                if key in ["single", "clle"]
+                else get_row(summary, m=10, method=key)
+            )
+            text.append(
+                text_row(
+                    section, f"AUC of {label}, {name}", r["auc_rnx_mean"], digits=3
+                )
+            )
     return text
 
 
 # combined approach with multiple imputation
+
 
 def make_missing_values():
     summary = pd.read_csv(CONFIG["ILLUSTRATION_DIR"] / "missing_summary_toxo_tsne.csv")
     section = "Combined Approach with Multiple Imputation"
     text = []
     for rate in [0.1, 0.3]:
-        for pattern, label in [("random", "random"), ("low_intensity", "intensity-dependent")]:
+        for pattern, label in [
+            ("random", "random"),
+            ("low_intensity", "intensity-dependent"),
+        ]:
             r = get_row(summary, rate=rate, pattern=pattern)
             text.append(
                 text_row(
@@ -193,12 +257,16 @@ def make_missing_values():
 
 # consensus representation of multiscale hyperparameter
 
+
 def make_multiscale_tables():
     section = "Consensus Representation of Multiscale Hyperparameter"
     recovery = pd.read_csv(
-        CONFIG["ILLUSTRATION_DIR"] / "multiscale_structure_recovery_summary_toxo_tsne.csv"
+        CONFIG["ILLUSTRATION_DIR"]
+        / "multiscale_structure_recovery_summary_toxo_tsne.csv"
     )
-    recovery["method"] = recovery["method"].replace({"MCE (multi-perplexity t-SNE)": "MCE"})
+    recovery["method"] = recovery["method"].replace(
+        {"MCE (multi-perplexity t-SNE)": "MCE"}
+    )
 
     # supplementary: tab:multiscale
     table = [
@@ -224,11 +292,16 @@ def make_multiscale_tables():
     for method in ["MCE", "Multiscale t-SNE"]:
         r = get_row(recovery, method=method)
         for k in ["q_global", "q_local", "auc_rnx"]:
-            text.append(text_row(section, f"{METRIC_LABELS[k]} of {method}", r[f"{k}_mean"], digits=3))
+            text.append(
+                text_row(
+                    section, f"{METRIC_LABELS[k]} of {method}", r[f"{k}_mean"], digits=3
+                )
+            )
     return text
 
 
 # instability of the MDS step
+
 
 def make_mds_values():
     section = "Instability of the MDS Step"
@@ -253,6 +326,8 @@ if __name__ == "__main__":
     os.makedirs(CONFIG["OUTPUT_DIR"], exist_ok=True)
 
     make_simulation_tables()
-    main_text = make_random_init_tables() + make_missing_values() + make_multiscale_tables()
+    main_text = (
+        make_random_init_tables() + make_missing_values() + make_multiscale_tables()
+    )
     save(pd.DataFrame(main_text), "main_text_values.csv")
     save(pd.DataFrame(make_mds_values()), "supp_text_values.csv")

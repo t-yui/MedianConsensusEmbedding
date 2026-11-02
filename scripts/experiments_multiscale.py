@@ -116,7 +116,9 @@ def print_distance_summary(D_consensus, embeddings_by_param, param_name):
     summary_rows = []
     for value, embs in embeddings_by_param.items():
         d = [
-            np.linalg.norm(D_consensus - compute_distance_matrix_embedding(e), ord="fro")
+            np.linalg.norm(
+                D_consensus - compute_distance_matrix_embedding(e), ord="fro"
+            )
             for e in embs
         ]
         print(
@@ -176,10 +178,14 @@ def run_multiscale_experiment(X_df, labels):
         for e in multiscale_embeddings
     ]
     rows.append(
-        {"method": "MCE (multi-perplexity t-SNE)", **structure_recovery(X_scaled, Y_final)}
+        {
+            "method": "MCE (multi-perplexity t-SNE)",
+            **structure_recovery(X_scaled, Y_final),
+        }
     )
     pd.DataFrame(rows).to_csv(
-        f"multiscale_structure_recovery_raw_{CONFIG['DATA_SOURCE']}_tsne.csv", index=False
+        f"multiscale_structure_recovery_raw_{CONFIG['DATA_SOURCE']}_tsne.csv",
+        index=False,
     )
     recovery = pd.DataFrame(rows).groupby("method", sort=False).agg(["mean", "std"])
     recovery.columns = ["_".join(c) for c in recovery.columns]
@@ -189,11 +195,16 @@ def run_multiscale_experiment(X_df, labels):
     print(recovery.to_string())
 
     plot_scatter_with_legend(
-        Y_final, labels, f"multiscale_consensus_embedding_{CONFIG['DATA_SOURCE']}_tsne.pdf", CONFIG["SAVE_PDF"]
+        Y_final,
+        labels,
+        f"multiscale_consensus_embedding_{CONFIG['DATA_SOURCE']}_tsne.pdf",
+        CONFIG["SAVE_PDF"],
     )
 
     for perp, embs in embeddings_by_perp.items():
-        fname = f"multiscale_embedding_perplexity{perp}_{CONFIG['DATA_SOURCE']}_tsne.pdf"
+        fname = (
+            f"multiscale_embedding_perplexity{perp}_{CONFIG['DATA_SOURCE']}_tsne.pdf"
+        )
         plot_scatter_with_legend(
             embs[0], labels, fname, CONFIG["SAVE_PDF"], ref_Y=Y_final
         )

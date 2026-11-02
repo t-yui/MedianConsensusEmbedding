@@ -57,7 +57,9 @@ def run_pool(X, pool, seeds, rng):
         # variable subsets are drawn sequentially before the parallel runs
         columns = [rng.choice(X.shape[1], size, replace=False) for _ in seeds]
         return Parallel(n_jobs=CONFIG["N_JOBS"])(
-            delayed(run_dr_method)(X[:, c], method=CONFIG["METHOD"], random_state=int(s))
+            delayed(run_dr_method)(
+                X[:, c], method=CONFIG["METHOD"], random_state=int(s)
+            )
             for s, c in zip(seeds, columns)
         )
     return Parallel(n_jobs=CONFIG["N_JOBS"])(
@@ -159,8 +161,16 @@ def evaluate_clle(X):
 def plot_stability(summary):
     x_vals = [1] + CONFIG["RUNS_LIST"]
     panels = [
-        ("s_ref", r"Distance to $\hat{y}_{1000}$ ($S_{\mathrm{ref}}$)", "instability_plot_1_distance_to_base"),
-        ("s_pair", r"Distance to each other  ($S_{\mathrm{pair}}$)", "instability_plot_2_pairwise"),
+        (
+            "s_ref",
+            r"Distance to $\hat{y}_{1000}$ ($S_{\mathrm{ref}}$)",
+            "instability_plot_1_distance_to_base",
+        ),
+        (
+            "s_pair",
+            r"Distance to each other  ($S_{\mathrm{pair}}$)",
+            "instability_plot_2_pairwise",
+        ),
     ]
     colors = {"single": "C0", "vm2012": "C1", "mce": "C2"}
     markers = {"vm2012": "^", "mce": "o"}
@@ -264,7 +274,8 @@ if __name__ == "__main__":
     rows.append(evaluate_clle(X_data))
     summary = pd.DataFrame(rows)
     summary.to_csv(
-        f"random_init_summary_{CONFIG['DATA_SOURCE']}_{CONFIG['METHOD']}.csv", index=False
+        f"random_init_summary_{CONFIG['DATA_SOURCE']}_{CONFIG['METHOD']}.csv",
+        index=False,
     )
     print(summary.to_string(index=False))
 
