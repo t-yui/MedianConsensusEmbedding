@@ -83,7 +83,11 @@ def run_imputation_repeat(X_df, rate, pattern, i, base_consensus_D):
     for j in range(CONFIG["N_IMPUTATIONS"]):
         seed = i * 1000 + j
         imputer = IterativeImputer(
-            estimator=BayesianRidge(), max_iter=10, random_state=seed, sample_posterior=True, verbose=0
+            estimator=BayesianRidge(),
+            max_iter=10,
+            random_state=seed,
+            sample_posterior=True,
+            verbose=0,
         )
         X_imp = imputer.fit_transform(X_miss_df)
         X_imp_scaled = scaler.fit_transform(X_imp)
