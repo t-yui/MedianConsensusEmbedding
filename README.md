@@ -1,13 +1,10 @@
 # MedianConsensusEmbedding
 
-This repository is dedicated to the code availability for the paper: [**Median Consensus Embedding for Dimensionality Reduction**](
-https://doi.org/10.48550/arXiv.2503.08103).
-The GitHub repository of this project is available at [**https://github.com/t-yui/MedianConsensusEmbedding**](
-https://github.com/t-yui/MedianConsensusEmbedding).
+This repository is dedicated to the code availability for the paper: **Median Consensus Embedding for Dimensionality Reduction**.
 
 ## Description
 
-Median Consensus Embedding (MCE) is an algorithm to obtain consensus representation of multiple embeddings via computing geometric median defined on embedding space.
+Median Consensus Embedding (MCE) is an algorithm to obtain consensus representation of multiple embeddings via computing geometric median defined on embedding quotient space.
 MCE can be used to (i) obtain stable visualization from multi-run with random initialization of non-linear dimensionality reduction methods, such as t-SNE or UMAP, (ii) integrate multiple embeddings from multiply imputed data to address missing values, and (iii) integrate embeddings generated with different hyperparameters into a single multiscale consensus representation.
 
 ## Requirements
@@ -48,7 +45,7 @@ y, x = MCE(
 
 `x` (numpy array, shape = ($n_{\mathrm{samples}}$, $n_{\mathrm{samples}}$)): The pairwise distance matrix of consensus embedding
 
-### Perform evaluation experiments
+### Perform evaluation experiments in the paper
 
 For preparation, execute the following commands.
 
@@ -115,7 +112,3 @@ python3 make_tables.py
 ```
 
 [^1]: Specify the dataset (`toxo` or `eb`) and the method (`tsne` or `umap`) in the config. The paper uses `toxo` with `tsne` and `eb` with `umap`.
-
-## Citation
-
-Tomo, Y. & Yoneoka, D. (2025). Median Consensus Embedding for Dimensionality Reduction. *arXiv preprint arXiv:2503.08103*. 
