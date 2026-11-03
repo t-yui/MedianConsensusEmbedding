@@ -10,8 +10,7 @@ MCE can be used to (i) obtain stable visualization from multi-run with random in
 ## Requirements
 
 - Python ≥ 3.9.0
-- Required libraries for MCE implementation: `scikit-learn`
-- Required libraries for evaluation experiments: `scikit-learn`, `umap-learn`, `tqdm`
+- Required libraries: see `requirements.txt`
 
 ## License
 
