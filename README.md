@@ -10,7 +10,7 @@ MCE can be used to (i) obtain stable visualization from multi-run with random in
 ## Requirements
 
 - Python ≥ 3.9.0
-- Required libraries: see `requirements.txt`
+- Required libraries: see [`requirements.txt`](requirements.txt)
 
 ## License
 
