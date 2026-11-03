@@ -32,5 +32,6 @@ run experiments_multiscale
 run experiments_mds_instability
 run experiments_mds_instability_eb_umap
 
-# creating tables of the paper
+# creating tablesa and supplementary figures of the paper
 run make_tables
+run create_supplementary_figures

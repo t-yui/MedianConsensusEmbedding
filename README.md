@@ -87,7 +87,7 @@ python3 download_data.py
 python3 experiments_random_init.py
 ```
 
-5. Evaluation of instability arising from MDS
+1. Evaluation of instability arising from MDS
 
 ```sh
 python3 experiments_mds_instability.py
@@ -109,6 +109,12 @@ python3 experiments_multiscale.py
 
 ```sh
 python3 make_tables.py
+```
+
+9. Creating supplementary figures of the paper
+
+```sh
+python3 create_supplementary_figures.py
 ```
 
 [^1]: Specify the dataset (`toxo` or `eb`) and the method (`tsne` or `umap`) in the config. The paper uses `toxo` with `tsne` and `eb` with `umap`.
