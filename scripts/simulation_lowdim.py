@@ -2,6 +2,10 @@
 # -*- coding: utf-8 -*-
 
 import os
+
+for _var in ["OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"]:
+    os.environ.setdefault(_var, "1")
+
 import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
@@ -14,9 +18,6 @@ from utils import (
     mean_distance_to_target,
     structure_recovery,
 )
-
-for _var in ["OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"]:
-    os.environ.setdefault(_var, "1")
 
 CONFIG = {
     "SCENARIOS": {
